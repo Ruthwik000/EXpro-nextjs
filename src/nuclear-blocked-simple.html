@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Blocked - Nuclear Mode</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 60px 40px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon {
+      font-size: 100px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    h1 {
+      font-size: 36px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .blocked-url {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 30px 0;
+      word-break: break-all;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .message {
+      font-size: 18px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .whitelist {
+      background: #e8f5e9;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+
+    .whitelist h3 {
+      color: #2e7d32;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .whitelist-item {
+      background: white;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      color: #333;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🚫</div>
+    <h1>This site is blocked</h1>
+    
+    <p class="message">
+      Nuclear Mode is active. Only whitelisted sites are accessible.
+    </p>
+
+    <div class="blocked-url" id="blockedUrl">
+      Loading...
+    </div>
+
+    <div class="whitelist">
+      <h3>✅ Allowed Sites</h3>
+      <div id="whitelistContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    // Get the blocked URL from query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const blockedUrl = urlParams.get('blocked') || 'Unknown URL';
+    document.getElementById('blockedUrl').textContent = blockedUrl;
+
+    // Get and display whitelist
+    chrome.runtime.sendMessage({ type: 'GET_NUCLEAR_MODE_STATUS' }, (response) => {
+      if (response && response.whitelist) {
+        const container = document.getElementById('whitelistContainer');
+        response.whitelist.forEach(site => {
+          const div = document.createElement('div');
+          div.className = 'whitelist-item';
+          div.textContent = site;
+          container.appendChild(div);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
