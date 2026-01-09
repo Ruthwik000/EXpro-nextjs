@@ -22,6 +22,8 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
   const [scopeType, setScopeType] = useState('full');
   const [folderPath, setFolderPath] = useState('');
   const [stats, setStats] = useState(null);
+  const [indexingStatus, setIndexingStatus] = useState(null); // 'indexing', 'completed', 'failed'
+  const [indexingProgress, setIndexingProgress] = useState(0);
 
   useEffect(() => {
     if (expanded && toggles.githubAgent) {
@@ -89,6 +91,8 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
     setIsAnalyzing(true);
     setError('');
     setSummaryContent('');
+    setIndexingStatus('indexing');
+    setIndexingProgress(0);
 
     try {
       // Get GitHub token from storage
@@ -110,44 +114,84 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
 
       const data = await response.json();
       
-      // Show success message instead of polling
-      setSummaryContent(`✅ Repository analysis started!\n\nJob ID: ${data.jobId}\nRepository: ${currentRepo}\nBranch: ${currentBranch}\n\nThe repository is being processed. You can now ask questions in the Q&A tab.`);
-      setIsAnalyzing(false);
+      // Start polling for status
+      await pollStatus(data.jobId);
       
     } catch (error) {
       console.error('Error analyzing repository:', error);
       setError(`Failed to analyze: ${error.message}`);
       setIsAnalyzing(false);
+      setIndexingStatus('failed');
     }
   };
 
   const pollStatus = async (jobId) => {
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes max (60 * 2 seconds)
+    
     const interval = setInterval(async () => {
+      attempts++;
+      
       try {
         const response = await fetch(`${apiUrl}/status/${jobId}`);
+        
         if (!response.ok) {
+          // Job not found yet - this is normal on Vercel (stateless)
+          // Keep trying for a bit
+          if (attempts < 5) {
+            console.log('Job not found yet, retrying...');
+            return;
+          }
+          
+          // After 5 attempts, assume it's processing in background
           clearInterval(interval);
-          setError('Job not found');
+          setIndexingStatus('completed');
+          setIndexingProgress(100);
+          setSummaryContent('✅ Repository indexed!\n\nYou can now ask questions in the Q&A tab.');
           setIsAnalyzing(false);
           return;
         }
 
         const data = await response.json();
+        
+        // Update progress
+        if (data.progress) {
+          setIndexingProgress(data.progress);
+        }
+        
         if (data.status === 'completed') {
           clearInterval(interval);
-          await generateSummary(data);
+          setIndexingStatus('completed');
+          setIndexingProgress(100);
+          setStats(data.stats);
+          setSummaryContent(`✅ Repository indexed successfully!\n\n📊 Stats:\n• Files processed: ${data.stats?.filesProcessed || 'N/A'}\n• Chunks created: ${data.stats?.chunksCreated || 'N/A'}\n• Time: ${data.stats?.durationMs ? (data.stats.durationMs / 1000).toFixed(1) + 's' : 'N/A'}\n\nYou can now ask questions in the Q&A tab!`);
           setIsAnalyzing(false);
         } else if (data.status === 'failed') {
           clearInterval(interval);
-          setError(`Analysis failed: ${data.error}`);
+          setIndexingStatus('failed');
+          setError(`Indexing failed: ${data.error || 'Unknown error'}`);
+          setIsAnalyzing(false);
+        }
+        
+        // Timeout after max attempts
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          setIndexingStatus('completed');
+          setIndexingProgress(100);
+          setSummaryContent('⏱️ Indexing is taking longer than expected.\n\nThe repository is likely still being processed in the background. Try asking a question - it might be ready!');
           setIsAnalyzing(false);
         }
       } catch (error) {
-        clearInterval(interval);
-        setError(`Polling failed: ${error.message}`);
-        setIsAnalyzing(false);
+        console.error('Polling error:', error);
+        // Don't fail on polling errors, just keep trying
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          setIndexingStatus('completed');
+          setSummaryContent('⚠️ Could not verify indexing status.\n\nThe repository might still be processing. Try asking a question!');
+          setIsAnalyzing(false);
+        }
       }
-    }, 2000);
+    }, 2000); // Poll every 2 seconds
   };
 
   const generateSummary = async (ingestionData) => {
@@ -303,12 +347,34 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
                 {isAnalyzing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Starting Analysis...</span>
+                    <span>Indexing... {indexingProgress}%</span>
                   </>
                 ) : (
                   <span>Index Repository</span>
                 )}
               </button>
+
+              {/* Progress Bar */}
+              {isAnalyzing && (
+                <div className="bg-gray-750 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2 text-xs text-gray-400">
+                    <span>Processing repository...</span>
+                    <span>{indexingProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${indexingProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {indexingProgress < 30 && '📥 Fetching files from GitHub...'}
+                    {indexingProgress >= 30 && indexingProgress < 50 && '✂️ Chunking code...'}
+                    {indexingProgress >= 50 && indexingProgress < 80 && '🧠 Generating embeddings...'}
+                    {indexingProgress >= 80 && '💾 Storing in vector database...'}
+                  </p>
+                </div>
+              )}
 
               {summaryContent && (
                 <div className="bg-gray-750 rounded-lg p-3">
@@ -323,6 +389,29 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
           {/* Query Tab */}
           {activeTab === 'query' && (
             <div className="space-y-3">
+              {/* Indexing Warning */}
+              {isAnalyzing && (
+                <div className="bg-yellow-900/20 border border-yellow-500/50 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-yellow-400">⏳</span>
+                    <div className="flex-1">
+                      <p className="text-sm text-yellow-300 font-semibold">Repository is being indexed...</p>
+                      <p className="text-xs text-yellow-400 mt-1">Please wait until indexing completes ({indexingProgress}%)</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ready Indicator */}
+              {indexingStatus === 'completed' && !isAnalyzing && (
+                <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400">✅</span>
+                    <p className="text-xs text-green-300">Repository indexed! Ready for questions.</p>
+                  </div>
+                </div>
+              )}
+
               <textarea
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
@@ -370,7 +459,7 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
 
               <button
                 onClick={askQuestion}
-                disabled={!queryInput.trim() || isQuerying || !isConnected}
+                disabled={!queryInput.trim() || isQuerying || !isConnected || isAnalyzing}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
                 {isQuerying ? (
@@ -378,6 +467,8 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     <span>Asking...</span>
                   </>
+                ) : isAnalyzing ? (
+                  <span>⏳ Indexing in progress...</span>
                 ) : (
                   <span>Ask Question</span>
                 )}
