@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { ingestionService } from '@/lib/services/IngestionService';
+import { serverlessIngestionService } from '@/lib/services/ServerlessIngestionService';
 import { ingestRequestSchema } from '@/lib/validation';
 import logger from '@/lib/logger';
 
@@ -19,7 +19,7 @@ export default async function handler(
       'Ingestion requested'
     );
 
-    const job = await ingestionService.ingestRepository(
+    const job = await serverlessIngestionService.ingestRepository(
       validatedData.repoUrl,
       validatedData.branch
     );

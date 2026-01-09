@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { ingestionService } from '@/lib/services/IngestionService';
+import { serverlessIngestionService } from '@/lib/services/ServerlessIngestionService';
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,7 +19,7 @@ export default async function handler(
     // Decode the repoId (it comes URL-encoded)
     const decodedRepoId = decodeURIComponent(repoId);
 
-    await ingestionService.deleteRepository(decodedRepoId);
+    await serverlessIngestionService.deleteRepository(decodedRepoId);
 
     res.status(200).json({
       message: 'Repository deleted successfully',

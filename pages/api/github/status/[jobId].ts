@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { ingestionService } from '@/lib/services/IngestionService';
+import { serverlessIngestionService } from '@/lib/services/ServerlessIngestionService';
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,7 +16,7 @@ export default async function handler(
       return res.status(400).json({ error: 'Invalid job ID' });
     }
 
-    const job = await ingestionService.getJob(jobId);
+    const job = await serverlessIngestionService.getJob(jobId);
 
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });

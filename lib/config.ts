@@ -19,14 +19,8 @@ const envSchema = z.object({
   PINECONE_ENVIRONMENT: z.string().min(1, "Pinecone environment is required"),
   PINECONE_INDEX_NAME: z.string().default("github-code-search"),
 
-  // Redis (optional - will use in-memory cache if not available)
-  REDIS_HOST: z.string().optional(),
-  REDIS_PORT: z.string().optional(),
-  REDIS_PASSWORD: z.string().optional(),
-  REDIS_DB: z.string().optional(),
-
   // Storage
-  CACHE_DIR: z.string().default("./cache"),
+  CACHE_DIR: z.string().default(process.env.VERCEL ? "/tmp/cache" : "./cache"),
   MAX_FILE_SIZE_MB: z.string().default("10"),
   MAX_REPO_SIZE_MB: z.string().default("1000"),
 
@@ -65,13 +59,6 @@ export const config = {
     apiKey: env.PINECONE_API_KEY,
     environment: env.PINECONE_ENVIRONMENT,
     indexName: env.PINECONE_INDEX_NAME,
-  },
-  redis: {
-    host: env.REDIS_HOST || "localhost",
-    port: parseInt(env.REDIS_PORT || "6379", 10),
-    password: env.REDIS_PASSWORD,
-    db: parseInt(env.REDIS_DB || "0", 10),
-    enabled: !!env.REDIS_HOST,
   },
   storage: {
     cacheDir: env.CACHE_DIR,

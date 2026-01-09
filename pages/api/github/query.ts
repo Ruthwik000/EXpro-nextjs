@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { ragService } from '@/lib/services/RAGService';
+import { enhancedRAGService } from '@/lib/services/EnhancedRAGService';
 import { queryRequestSchema } from '@/lib/validation';
 import logger from '@/lib/logger';
 
@@ -23,7 +23,7 @@ export default async function handler(
       'Query requested'
     );
 
-    const result = await ragService.query(validatedData);
+    const result = await enhancedRAGService.query(validatedData);
 
     res.status(200).json(result);
   } catch (error: any) {
