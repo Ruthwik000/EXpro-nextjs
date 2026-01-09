@@ -102,14 +102,18 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
         body: JSON.stringify({ 
           repoUrl, 
           branch: currentBranch,
-          githubToken: githubToken || undefined  // Send token in body
+          githubToken: githubToken || undefined
         })
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      await pollStatus(data.jobId);
+      
+      // Show success message instead of polling
+      setSummaryContent(`✅ Repository analysis started!\n\nJob ID: ${data.jobId}\nRepository: ${currentRepo}\nBranch: ${currentBranch}\n\nThe repository is being processed. You can now ask questions in the Q&A tab.`);
+      setIsAnalyzing(false);
+      
     } catch (error) {
       console.error('Error analyzing repository:', error);
       setError(`Failed to analyze: ${error.message}`);
@@ -299,33 +303,18 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
                 {isAnalyzing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Analyzing...</span>
+                    <span>Starting Analysis...</span>
                   </>
                 ) : (
-                  <span>Analyze Repository</span>
+                  <span>Index Repository</span>
                 )}
               </button>
 
               {summaryContent && (
                 <div className="bg-gray-750 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-200">Summary</h3>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(summaryContent)}
-                      className="text-gray-400 hover:text-gray-200 text-xs"
-                    >
-                      📋 Copy
-                    </button>
-                  </div>
                   <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                     {summaryContent}
                   </div>
-                  {stats && (
-                    <div className="flex gap-3 mt-3 pt-3 border-t border-gray-700 text-xs text-gray-400">
-                      {stats.filesProcessed && <span>📄 {stats.filesProcessed} files</span>}
-                      {stats.chunksCreated && <span>📦 {stats.chunksCreated} chunks</span>}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
