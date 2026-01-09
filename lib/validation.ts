@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const ingestRequestSchema = z.object({
     repoUrl: z.string().url().regex(/github\.com/, 'Must be a GitHub URL'),
     branch: z.string().default('main'),
+    githubToken: z.string().optional(),  // Accept token from request body
 });
 
 export const queryRequestSchema = z.object({
@@ -16,6 +17,7 @@ export const queryRequestSchema = z.object({
         .optional(),
     topK: z.number().int().min(1).max(20).default(5),
     minScore: z.number().min(0).max(1).default(0.7),
+    githubToken: z.string().optional(),  // Accept token from request body
 });
 
 export type IngestRequest = z.infer<typeof ingestRequestSchema>;

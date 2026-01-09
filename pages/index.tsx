@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -10,6 +11,12 @@ export default function Home() {
       </Head>
       <main className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <Link href="/settings" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              ⚙️ Settings (Configure GitHub Token)
+            </Link>
+          </div>
+
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Dev Productivity Suite
           </h1>

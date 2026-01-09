@@ -8,7 +8,7 @@ import {
     isCodeFile,
     normalizeRepoId,
 } from '../utils';
-import { githubAPIService } from './GitHubAPIService';
+import { GitHubAPIService } from './GitHubAPIService';
 import { chunkingService } from './ChunkingService';
 import { embeddingService } from './EmbeddingService';
 import { vectorStoreService } from './VectorStoreService';
@@ -21,10 +21,12 @@ import cacheService from './CacheService';
 export class ServerlessIngestionService {
     private maxFileSizeMB: number;
     private maxRepoSizeMB: number;
+    private githubAPI: GitHubAPIService;
 
-    constructor() {
+    constructor(userToken?: string) {
         this.maxFileSizeMB = config.storage.maxFileSizeMB;
         this.maxRepoSizeMB = config.storage.maxRepoSizeMB;
+        this.githubAPI = new GitHubAPIService(userToken);
     }
 
     async ingestRepository(repoUrl: string, branch: string = 'main'): Promise<IngestionJob> {
@@ -62,11 +64,11 @@ export class ServerlessIngestionService {
             await this.updateJob(job);
 
             // Get repository info
-            const repoInfo = await githubAPIService.getRepositoryInfo(job.repoUrl);
+            const repoInfo = await this.githubAPI.getRepositoryInfo(job.repoUrl);
             const actualBranch = job.branch || repoInfo.defaultBranch;
 
             // Get repository tree
-            const tree = await githubAPIService.getRepositoryTree(job.repoUrl, actualBranch);
+            const tree = await this.githubAPI.getRepositoryTree(job.repoUrl, actualBranch);
 
             // Filter files
             const codeFiles = tree.filter(file => {
@@ -170,7 +172,7 @@ export class ServerlessIngestionService {
 
             try {
                 // Fetch multiple files in parallel
-                const fileContents = await githubAPIService.getMultipleFiles(
+                const fileContents = await this.githubAPI.getMultipleFiles(
                     repoUrl,
                     filePaths,
                     branch

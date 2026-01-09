@@ -13,16 +13,21 @@ export default async function handler(
 
   try {
     const validatedData = queryRequestSchema.parse(req.body);
+    
+    // Get token from body (preferred) or header (fallback)
+    const userToken = validatedData.githubToken || req.headers['x-github-token'] as string | undefined;
 
     logger.info(
       {
         repoId: validatedData.repoId,
         query: validatedData.query,
         scope: validatedData.scope,
+        hasUserToken: !!userToken,
       },
       'Query requested'
     );
 
+    // TODO: Pass userToken to enhancedRAGService if needed for issues API
     const result = await enhancedRAGService.query(validatedData);
 
     res.status(200).json(result);

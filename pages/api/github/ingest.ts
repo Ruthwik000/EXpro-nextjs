@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { serverlessIngestionService } from '@/lib/services/ServerlessIngestionService';
+import { ServerlessIngestionService } from '@/lib/services/ServerlessIngestionService';
 import { ingestRequestSchema } from '@/lib/validation';
 import logger from '@/lib/logger';
 
@@ -13,13 +13,19 @@ export default async function handler(
 
   try {
     const validatedData = ingestRequestSchema.parse(req.body);
+    
+    // Get token from body (preferred) or header (fallback)
+    const userToken = validatedData.githubToken || req.headers['x-github-token'] as string | undefined;
 
     logger.info(
-      { repoUrl: validatedData.repoUrl, branch: validatedData.branch },
+      { repoUrl: validatedData.repoUrl, branch: validatedData.branch, hasUserToken: !!userToken },
       'Ingestion requested'
     );
 
-    const job = await serverlessIngestionService.ingestRepository(
+    // Create service instance with user token if provided
+    const ingestionService = new ServerlessIngestionService(userToken);
+    
+    const job = await ingestionService.ingestRepository(
       validatedData.repoUrl,
       validatedData.branch
     );

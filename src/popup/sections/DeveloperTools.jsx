@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Section from '../components/Section';
 import Toggle from '../components/Toggle';
 import AWSAgent from '../components/AWSAgent';
+import GitHubSettings from '../components/GitHubSettings';
 import { API_CONFIG } from '../../config/api';
 
 const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
@@ -90,11 +91,19 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
     setSummaryContent('');
 
     try {
+      // Get GitHub token from storage
+      const { githubToken } = await chrome.storage.sync.get(['githubToken']);
+      
       const repoUrl = `https://github.com/${currentRepo}`;
+      
       const response = await fetch(`${apiUrl}/ingest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoUrl, branch: currentBranch })
+        body: JSON.stringify({ 
+          repoUrl, 
+          branch: currentBranch,
+          githubToken: githubToken || undefined  // Send token in body
+        })
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -170,11 +179,15 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
     setSources([]);
 
     try {
+      // Get GitHub token from storage
+      const { githubToken } = await chrome.storage.sync.get(['githubToken']);
+      
       const requestBody = {
         repoId: currentRepo,
         query: queryInput,
         topK: 10,
-        minScore: 0.25
+        minScore: 0.25,
+        githubToken: githubToken || undefined  // Send token in body
       };
 
       if (scopeType === 'folder' && folderPath.trim()) {
@@ -208,6 +221,13 @@ const DeveloperTools = ({ expanded, onToggle, toggles, onToggleChange }) => {
         enabled={toggles.githubAgent || false}
         onChange={(val) => onToggleChange('githubAgent', val)}
       />
+
+      {/* GitHub Token Settings - Show when GitHub Agent is enabled */}
+      {toggles.githubAgent && (
+        <div className="mt-3 pt-3 border-t border-gray-700">
+          <GitHubSettings />
+        </div>
+      )}
 
       {/* GitHub Agent UI - Only show when enabled and on GitHub */}
       {toggles.githubAgent && showGitHubAgent && currentRepo && (

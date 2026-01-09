@@ -25,8 +25,14 @@ export class GitHubAPIService {
   private token?: string;
   private baseUrl = "https://api.github.com";
 
-  constructor() {
-    this.token = config.github.token;
+  constructor(token?: string) {
+    this.token = token || config.github.token;
+    
+    if (this.token) {
+      logger.info({ hasToken: true, tokenPrefix: this.token.substring(0, 7) }, "GitHubAPIService initialized with token");
+    } else {
+      logger.warn("GitHubAPIService initialized WITHOUT token - rate limited to 60 req/hr");
+    }
   }
 
   private getHeaders() {

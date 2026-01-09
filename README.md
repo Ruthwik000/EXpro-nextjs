@@ -17,7 +17,6 @@ The GitHub agent is now built into this Next.js application - no separate backen
 
 ### 1. Install Dependencies
 
-
 ```bash
 npm install
 ```
@@ -36,7 +35,7 @@ PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_ENVIRONMENT=us-east-1
 PINECONE_INDEX_NAME=github-client
 
-# GitHub Token (optional, for private repos and issues access)
+# GitHub Token (optional - can also be set in UI)
 GITHUB_TOKEN=your_github_token
 ```
 
@@ -46,7 +45,7 @@ GITHUB_TOKEN=your_github_token
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see the web interface.
+Visit `http://localhost:3000` and go to **Settings** to configure your GitHub token in the UI.
 
 ### 4. Build Chrome Extension
 
