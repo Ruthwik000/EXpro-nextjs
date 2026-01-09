@@ -1,17 +1,17 @@
 // API Configuration for Chrome Extension
 
-// Change this to your deployed URL when ready
-const PRODUCTION_API_URL = 'https://your-app-name.vercel.app/api/github';
+// Production API URL (deployed on Vercel)
+const PRODUCTION_API_URL = 'https://e-xpro-nextjs.vercel.app/api/github';
 const DEVELOPMENT_API_URL = 'http://localhost:3000/api/github';
 
 // Automatically detect environment
 // For production extension, use deployed API
 // For development, use localhost
 export const API_CONFIG = {
-  // Set to true when building for production
-  isProduction: false, // Change to true after deploying
+  // Set to true to use production API
+  isProduction: true,
   
-  baseUrl: false ? PRODUCTION_API_URL : DEVELOPMENT_API_URL,
+  baseUrl: true ? PRODUCTION_API_URL : DEVELOPMENT_API_URL,
   
   timeout: 30000, // 30 seconds
 };
