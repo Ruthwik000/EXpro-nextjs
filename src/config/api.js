@@ -1,7 +1,7 @@
 // API Configuration for Chrome Extension
 
 // Change this to your deployed URL when ready
-const PRODUCTION_API_URL = 'https://your-app.vercel.app/api/github';
+const PRODUCTION_API_URL = 'https://your-app-name.vercel.app/api/github';
 const DEVELOPMENT_API_URL = 'http://localhost:3000/api/github';
 
 // Automatically detect environment
@@ -9,7 +9,7 @@ const DEVELOPMENT_API_URL = 'http://localhost:3000/api/github';
 // For development, use localhost
 export const API_CONFIG = {
   // Set to true when building for production
-  isProduction: false,
+  isProduction: false, // Change to true after deploying
   
   baseUrl: false ? PRODUCTION_API_URL : DEVELOPMENT_API_URL,
   
