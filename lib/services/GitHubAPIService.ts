@@ -71,13 +71,35 @@ export class GitHubAPIService {
     const { owner, repo } = this.parseRepoUrl(repoUrl);
     
     try {
+      logger.info({ owner, repo, branch }, 'Fetching repository tree from GitHub API');
+      
       const response = await axios.get(
         `${this.baseUrl}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-        { headers: this.getHeaders() }
+        { 
+          headers: this.getHeaders(),
+          timeout: 30000 // 30 second timeout
+        }
       );
       
-      return response.data.tree;
+      logger.info({ 
+        owner, 
+        repo, 
+        branch, 
+        treeSize: response.data.tree?.length || 0,
+        truncated: response.data.truncated 
+      }, 'Repository tree fetched successfully');
+      
+      return response.data.tree || [];
     } catch (error: any) {
+      logger.error({
+        owner,
+        repo,
+        branch,
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data
+      }, 'Failed to fetch repository tree');
+      
       if (error.response?.status === 404 && branch === "main") {
         // Try master branch
         logger.info({ repoUrl }, "Branch 'main' not found, trying 'master'");

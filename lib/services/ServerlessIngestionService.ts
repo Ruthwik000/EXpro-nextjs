@@ -63,35 +63,57 @@ export class ServerlessIngestionService {
             job.progress = 10;
             await this.updateJob(job);
 
+            logger.info({ repoId: job.repoId, repoUrl: job.repoUrl }, 'Starting to fetch repository info');
+
             // Get repository info
             const repoInfo = await this.githubAPI.getRepositoryInfo(job.repoUrl);
             const actualBranch = job.branch || repoInfo.defaultBranch;
 
+            logger.info({ repoId: job.repoId, branch: actualBranch, defaultBranch: repoInfo.defaultBranch }, 'Repository info fetched, fetching tree...');
+
             // Get repository tree
             const tree = await this.githubAPI.getRepositoryTree(job.repoUrl, actualBranch);
+            
+            logger.info({ repoId: job.repoId, totalFiles: tree.length }, 'Repository tree fetched');
 
-            // Filter files
-            const codeFiles = tree.filter(file => {
-                if (file.type !== 'file') return false;
-                if (shouldIgnorePath(file.path)) return false;
-                if (isBinaryFile(file.path)) return false;
-                if (!isCodeFile(file.path)) return false;
-                
-                // Check file size
+            // Filter files with detailed logging
+            const allFiles = tree.filter(f => f.type === 'file');
+            const nonIgnored = allFiles.filter(f => !shouldIgnorePath(f.path));
+            const nonBinary = nonIgnored.filter(f => !isBinaryFile(f.path));
+            const codeFiles = nonBinary.filter(f => isCodeFile(f.path));
+            
+            logger.info({
+                repoId: job.repoId,
+                totalFiles: tree.length,
+                filesOnly: allFiles.length,
+                afterIgnoreFilter: nonIgnored.length,
+                afterBinaryFilter: nonBinary.length,
+                finalCodeFiles: codeFiles.length,
+                samplePaths: codeFiles.slice(0, 5).map(f => f.path)
+            }, 'File filtering results');
+
+            // Final size check
+            const processableFiles = codeFiles.filter(file => {
                 const fileSizeMB = file.size / (1024 * 1024);
                 if (fileSizeMB > this.maxFileSizeMB) {
                     logger.warn({ file: file.path, sizeMB: fileSizeMB }, 'Skipping large file');
                     return false;
                 }
-                
                 return true;
             });
 
-            if (codeFiles.length === 0) {
+            if (processableFiles.length === 0) {
+                logger.error({
+                    repoId: job.repoId,
+                    totalFiles: tree.length,
+                    filesOnly: allFiles.length,
+                    afterFilters: codeFiles.length,
+                    sampleAllFiles: allFiles.slice(0, 10).map(f => ({ path: f.path, size: f.size }))
+                }, 'No processable files found - detailed breakdown');
                 throw new Error('No processable files found in repository');
             }
 
-            logger.info({ repoId: job.repoId, fileCount: codeFiles.length }, 'Files to process');
+            logger.info({ repoId: job.repoId, fileCount: processableFiles.length }, 'Files to process');
 
             // Update status: chunking
             job.status = 'chunking';
@@ -99,7 +121,7 @@ export class ServerlessIngestionService {
             await this.updateJob(job);
 
             // Fetch and chunk files in batches
-            const chunks = await this.chunkFiles(codeFiles, job.repoId, job.repoUrl, actualBranch);
+            const chunks = await this.chunkFiles(processableFiles, job.repoId, job.repoUrl, actualBranch);
 
             if (chunks.length === 0) {
                 throw new Error('No chunks created from repository files');
@@ -128,7 +150,7 @@ export class ServerlessIngestionService {
             job.progress = 100;
             job.completedAt = new Date();
             job.stats = {
-                filesProcessed: codeFiles.length,
+                filesProcessed: processableFiles.length,
                 chunksCreated: chunks.length,
                 embeddingsGenerated: embeddings.length,
                 tokensUsed: this.estimateTokens(chunks),
@@ -153,7 +175,14 @@ export class ServerlessIngestionService {
             job.completedAt = new Date();
             await this.updateJob(job);
 
-            logger.error({ error, jobId: job.id, repoId: job.repoId }, 'Ingestion failed');
+            logger.error({ 
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                jobId: job.id, 
+                repoId: job.repoId,
+                repoUrl: job.repoUrl,
+                branch: job.branch
+            }, 'Ingestion failed with detailed error');
         }
     }
 
